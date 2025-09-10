@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "AnimeFire Downloader",
+  "version": "1.0.0",
+  "description": "Baixe episódios de anime do AnimeFire.plus com facilidade",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "downloads",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://animefire.plus/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AnimeFire Downloader"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://animefire.plus/*"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
