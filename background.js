@@ -10,8 +10,11 @@ class AnimeFireBackground {
     ];
     this.requestCount = 0;
     this.lastRequestTime = 0;
-    this.minDelay = 2000; // Minimum 2 seconds between requests
-    this.maxDelay = 8000; // Maximum 8 seconds between requests
+    this.minDelay = 2000;
+    this.maxDelay = 8000;
+    this.downloadQueue = [];
+    this.activeDownloads = new Map();
+    this.maxSimultaneousDownloads = 2;
     this.init();
   }
 
@@ -210,12 +213,12 @@ class AnimeFireBackground {
   setupMessageListener() {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'download-episode') {
-        this.downloadEpisodeFromMessage(request)
+        this.queueDownload(request)
           .then(result => sendResponse({ success: true, result }))
           .catch(error => sendResponse({ success: false, error: error.message }));
         return true;
       }
-      
+
       if (request.action === 'get-quality-links') {
         this.getQualityLinks(request.url)
           .then(links => sendResponse({ success: true, links }))
@@ -230,7 +233,61 @@ class AnimeFireBackground {
           .catch(error => sendResponse({ success: false, error: error.message }));
         return true;
       }
+
+      if (request.action === 'set-max-downloads') {
+        this.maxSimultaneousDownloads = Math.max(1, Math.min(5, request.value));
+        sendResponse({ success: true, maxDownloads: this.maxSimultaneousDownloads });
+        return true;
+      }
+
+      if (request.action === 'get-queue-status') {
+        sendResponse({
+          success: true,
+          active: this.activeDownloads.size,
+          queued: this.downloadQueue.length,
+          max: this.maxSimultaneousDownloads
+        });
+        return true;
+      }
     });
+  }
+
+  async queueDownload(request) {
+    const downloadId = `${request.animeName}-${request.episodeNumber}-${Date.now()}`;
+    const downloadTask = { id: downloadId, ...request };
+
+    this.downloadQueue.push(downloadTask);
+    this.processQueue();
+
+    return new Promise((resolve, reject) => {
+      const checkInterval = setInterval(() => {
+        if (!this.activeDownloads.has(downloadId)) {
+          clearInterval(checkInterval);
+          resolve({ queued: true, id: downloadId });
+        }
+      }, 100);
+
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        resolve({ queued: true, id: downloadId });
+      }, 1000);
+    });
+  }
+
+  processQueue() {
+    while (
+      this.downloadQueue.length > 0 &&
+      this.activeDownloads.size < this.maxSimultaneousDownloads
+    ) {
+      const task = this.downloadQueue.shift();
+      this.activeDownloads.set(task.id, true);
+
+      this.downloadEpisodeFromMessage(task)
+        .finally(() => {
+          this.activeDownloads.delete(task.id);
+          this.processQueue();
+        });
+    }
   }
 
   async handleEpisodeDownload(linkUrl, tab) {

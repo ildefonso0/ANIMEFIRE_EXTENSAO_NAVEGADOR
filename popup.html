@@ -124,10 +124,18 @@
     <div class="tab-content" id="settings-tab">
       <div class="settings-section">
         <h3>Configurações</h3>
-        
+
         <div class="setting-item">
           <label for="download-delay">Intervalo entre downloads (segundos):</label>
           <input type="number" id="download-delay" min="1" max="60" value="20">
+        </div>
+
+        <div class="setting-item">
+          <label for="max-simultaneous">Downloads simultâneos máximos:</label>
+          <div class="slider-container">
+            <input type="range" id="max-simultaneous" min="1" max="5" value="2">
+            <span id="max-value">2</span>
+          </div>
         </div>
 
         <div class="setting-item">
@@ -168,7 +176,16 @@
     <div class="download-progress" id="download-progress" style="display: none;">
       <div class="progress-header">
         <h3>Downloads em Progresso</h3>
+        <div class="queue-info">
+          <span class="queue-status">
+            <span class="active-count">0</span>/<span class="max-count">2</span>
+          </span>
+        </div>
         <button class="btn-close" id="close-progress">×</button>
+      </div>
+      <div class="queue-status-bar">
+        <div class="queue-bar-fill"></div>
+        <span class="queue-text">Fila: <span class="queue-count">0</span></span>
       </div>
       <div class="progress-list" id="progress-list"></div>
     </div>

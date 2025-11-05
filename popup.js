@@ -5,7 +5,8 @@ class AnimeFire {
       downloadDelay: 20,
       downloadAllQualities: false,
       autoDetect: true,
-      showNotifications: true
+      showNotifications: true,
+      maxSimultaneous: 2
     };
     this.init();
   }
@@ -14,6 +15,7 @@ class AnimeFire {
     await this.loadSettings();
     this.setupEventListeners();
     this.setupTabs();
+    this.setupQueueStatusUpdate();
     await this.detectCurrentPage();
   }
 
@@ -32,6 +34,25 @@ class AnimeFire {
     document.getElementById('download-all-qualities').checked = this.settings.downloadAllQualities;
     document.getElementById('auto-detect').checked = this.settings.autoDetect;
     document.getElementById('show-notifications').checked = this.settings.showNotifications;
+    document.getElementById('max-simultaneous').value = this.settings.maxSimultaneous || 2;
+    document.getElementById('max-value').textContent = this.settings.maxSimultaneous || 2;
+  }
+
+  setupQueueStatusUpdate() {
+    setInterval(() => {
+      if (document.getElementById('download-progress').style.display === 'flex') {
+        chrome.runtime.sendMessage(
+          { action: 'get-queue-status' },
+          (response) => {
+            if (response && response.success) {
+              document.querySelector('.active-count').textContent = response.active;
+              document.querySelector('.max-count').textContent = response.max;
+              document.querySelector('.queue-count').textContent = response.queued;
+            }
+          }
+        );
+      }
+    }, 500);
   }
 
   setupEventListeners() {
@@ -64,6 +85,17 @@ class AnimeFire {
     document.getElementById('download-delay').addEventListener('change', (e) => {
       this.settings.downloadDelay = parseInt(e.target.value);
       this.saveSettings();
+    });
+
+    document.getElementById('max-simultaneous').addEventListener('input', (e) => {
+      const value = parseInt(e.target.value);
+      this.settings.maxSimultaneous = value;
+      document.getElementById('max-value').textContent = value;
+      this.saveSettings();
+      chrome.runtime.sendMessage({
+        action: 'set-max-downloads',
+        value: value
+      });
     });
 
     document.getElementById('download-all-qualities').addEventListener('change', (e) => {
@@ -485,10 +517,15 @@ class AnimeFire {
       downloadDelay: 20,
       downloadAllQualities: false,
       autoDetect: true,
-      showNotifications: true
+      showNotifications: true,
+      maxSimultaneous: 2
     };
     await this.saveSettings();
     this.updateSettingsUI();
+    chrome.runtime.sendMessage({
+      action: 'set-max-downloads',
+      value: 2
+    });
     this.showNotification('Configurações restauradas', 'success');
   }
 
